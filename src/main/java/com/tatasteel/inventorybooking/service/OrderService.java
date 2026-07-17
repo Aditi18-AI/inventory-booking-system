@@ -3,6 +3,7 @@ package com.tatasteel.inventorybooking.service;
 import com.tatasteel.inventorybooking.entity.Order;
 import com.tatasteel.inventorybooking.entity.SteelGrade;
 import com.tatasteel.inventorybooking.repository.OrderRepository;
+import com.tatasteel.inventorybooking.repository.SteelGradeRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,7 +18,7 @@ public class OrderService {
     private OrderRepository orderRepository;
 
     @Autowired
-    private SteelGradeService steelGradeService;
+    private SteelGradeRepository steelGradeRepository;
 
     @Autowired
     private ClientService clientService;
@@ -25,7 +26,8 @@ public class OrderService {
     @Transactional
     public Order placeOrder(Long clientId, Long steelGradeId, Double quantity) {
 
-        SteelGrade steelGrade = steelGradeService.getSteelGradeById(steelGradeId);
+        SteelGrade steelGrade = steelGradeRepository.findByIdWithLock(steelGradeId)
+                .orElseThrow(() -> new RuntimeException("Steel grade not found"));
 
         if (steelGrade.getAvailableQuantity() < quantity) {
             throw new RuntimeException("Insufficient stock. Available: "
@@ -33,7 +35,7 @@ public class OrderService {
         }
 
         steelGrade.setAvailableQuantity(steelGrade.getAvailableQuantity() - quantity);
-        steelGradeService.updateStock(steelGradeId, steelGrade.getAvailableQuantity());
+        steelGradeRepository.save(steelGrade);
 
         Order order = new Order();
         order.setClient(clientService.getClientById(clientId));
